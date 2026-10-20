@@ -1,0 +1,42 @@
+[
+  {
+    "text": "Un motard vient de faire un accident sur la route cantonale, il est blessé.",
+    "expected": true
+  },
+  {
+    "text": "Un arbre est tombé en travers de la chaussée et bloque les voitures.",
+    "expected": true
+  },
+  {
+    "text": "Il y a un gros bouchon sur l'autoroute après un accident.",
+    "expected": true
+  },
+  {
+    "text": "Une voiture vient de renverser un piéton au passage clouté.",
+    "expected": true
+  },
+  {
+    "text": "Un vélo vient de se faire renversé sur la chaussée",
+    "expected": true
+  },
+  {
+    "text": "Venez m'aider, mon chat est tombé du quatrième étage.",
+    "expected": false
+  },
+  {
+    "text": "Mon père ne respire plus dans le salon, envoyez une ambulance.",
+    "expected": false
+  },
+  {
+    "text": "Il y a un feu dans ma cuisine, appelez les pompiers.",
+    "expected": false
+  },
+  {
+    "text": "Un collègue s'est blessé avec une machine dans l'atelier.",
+    "expected": false
+  },
+  {
+    "text": "Je suis garé devant chez moi et mon enfant a de la fièvre.",
+    "expected": false
+  }
+]
