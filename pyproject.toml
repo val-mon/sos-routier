@@ -3,5 +3,10 @@ name = "sos-routier"
 version = "0.1.0"
 requires-python = ">=3.13"
 dependencies = [
+    "accelerate>=1.15.0",
+    "audioop-lts>=0.2.2",
+    "librosa>=1.0.0",
+    "pydub>=0.25.1",
+    "torch>=2.14.1",
     "transformers>=5.20.2",
 ]
