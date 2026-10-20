@@ -3,5 +3,8 @@ name = "sos-routier"
 version = "0.1.0"
 requires-python = ">=3.13"
 dependencies = [
+    "dotenv>=0.9.9",
+    "ollama>=0.6.3",
+    "pydantic>=2.14.1",
     "transformers>=5.20.2",
 ]
