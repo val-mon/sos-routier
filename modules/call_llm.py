@@ -1,18 +1,18 @@
 from dotenv import load_dotenv
 from ollama import Client
-import llm_tool_utils
+import modules.llm_tool_utils
 from pydantic import BaseModel
 import inspect
 from typing import get_type_hints
 import os
 import json
 
-load_dotenv()
+load_dotenv()  # Load environment variables from .env file
 
 client = Client(headers={"Authorization": f"Bearer {os.getenv('OLLAMA_API_KEY')}"})
 
 MODEL = "gpt-oss:120b-cloud"
-MAX_TOOL_ROUNDS = 4
+MAX_TOOL_ROUNDS = 6
 
 
 ### TOOLS
@@ -30,7 +30,9 @@ def web_fetch(url: str) -> str:
 
 AVAILABLE_TOOLS = {"web_search": web_search, "web_fetch": web_fetch}
 
-tools_schema = [llm_tool_utils.tool_schema(fn) for fn in AVAILABLE_TOOLS.values()]
+tools_schema = [
+    modules.llm_tool_utils.tool_schema(fn) for fn in AVAILABLE_TOOLS.values()
+]
 
 
 ### LLM CALL
@@ -56,7 +58,7 @@ SYSTEM_PROMPT = """\
 - Si l'appelant cite un lieu connu (école, hôpital, gare, bâtiment public...),
   complète l'adresse officielle de ce lieu (rue, numéro, code postal, ville)
   et mets "inferred" à true.
-- Si tu n'es pas sûr de l'adresse, mets null. N'invente jamais.
+- Si tu n'es pas sûr de l'adresse, mets null. N'invente jamais. Si tu n'as rien ajouté aux informations du texte fourni, mets inferred à false. Inferred est à true uniquement quand tu ajoutes des informations.
 - Garde le lieu cité dans "landmark".
 - road_type = type de voie en minuscules (rue, chemin, route, avenue, boulevard...).
   road = nom de la voie sans son type.
@@ -83,6 +85,7 @@ SEARCH_PROMPT = """\
   simplement par un court résumé de ce que tu as trouvé.
 - Cherche avec le nom du lieu + la ville citée (ex. "McDonald's Sion adresse").
   Ne retiens que les résultats situés dans cette ville.
+- Les appels ne concernent que la Suisse, donc si on te donne une ville en dehors, soit tu ne trouves pas la ville, soit tu trouves une ville qui correspond à peu près.
 </rules>
 """
 
@@ -99,45 +102,45 @@ def run_tool(call) -> str:
     return result
 
 
-def extract_structured_data_llm(provided_data: str):
+def research_phase(provided_data: str) -> str:
     messages = [
-        {
-            "role": "system",
-            "content": SEARCH_PROMPT,
-        },
+        {"role": "system", "content": SEARCH_PROMPT},
+        {"role": "user", "content": f"<provided_data>{provided_data}</provided_data>"},
+    ]
+    summary = ""
+    for _ in range(MAX_TOOL_ROUNDS):
+        response = client.chat(model=MODEL, messages=messages, tools=tools_schema)
+        messages.append(response.message)
+        if not response.message.tool_calls:
+            summary = response.message.content or ""
+            break
+        for call in response.message.tool_calls:
+            result = run_tool(call)
+            messages.append(
+                {"role": "tool", "name": call.function.name, "content": result}
+            )
+    return summary
+
+
+def extract_structured_data_llm(provided_data: str) -> str | None:
+    research = research_phase(provided_data)
+
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
         {
             "role": "user",
-            "content": "<provided_data>%s</provided_data>" % provided_data,
+            "content": (
+                f"<provided_data>{provided_data}</provided_data>\n"
+                f"<research_results>{research}</research_results>"
+            ),
         },
     ]
 
-    for _ in range(MAX_TOOL_ROUNDS):
-        response = client.chat(
-            model=MODEL,
-            messages=messages,
-            stream=False,
-            tools=tools_schema,
-        )
-        messages.append(response.message)
-
-        if not response.message.tool_calls:
-            break  # le modèle a fini de chercher
-
-        for call in response.message.tool_calls:
-            tool_result = run_tool(call)
-            messages.append(
-                {
-                    "role": "tool",
-                    "name": call.function.name,
-                    "content": tool_result,
-                }
-            )
-
-    messages.append({"role": "system", "content": SYSTEM_PROMPT})
     response = client.chat(
         model=MODEL,
         messages=messages,
         stream=False,
+        think="low",
         format=LocationData.model_json_schema(),
         options={
             "temperature": 0.0

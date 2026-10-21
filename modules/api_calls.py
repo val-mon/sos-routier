@@ -1,7 +1,7 @@
 import requests
 
 
-def get_weather_by_city(city: str) -> dict:
+def get_weather_data_by_city(city: str) -> dict:
     """
     Get the current weather for a given city using the OpenWeatherMap API.
 
