@@ -234,6 +234,50 @@
       border: 1px solid rgba(231, 76, 60, 0.3);
     }
 
+    .speed-case {
+      margin-top: 0.75rem;
+      background: #0f1117;
+      border: 1px solid #2a2d37;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .speed-sign {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 3.5px solid #e74c3c;
+      background: #ffffff;
+      color: #111;
+      font-weight: 800;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    }
+    .speed-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      min-width: 0;
+    }
+    .speed-label {
+      font-size: 0.7rem;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+    .speed-val {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #e4e6eb;
+    }
+
     .data-table {
       width: 100%;
       border-collapse: collapse;
@@ -417,12 +461,38 @@
     }
 
     function renderClassification(data) {
-      const pct = Math.round(data.score * 100);
-      const color = data.is_circulation ? "#27ae60" : "#e74c3c";
-      const verdictClass = data.is_circulation ? "yes" : "no";
-      const verdictText = data.is_circulation
+      const circData = Array.isArray(data) ? data[0] : data;
+      const maxSpeed = Array.isArray(data) ? data[1] : (data?.max_speed ?? null);
+
+      const pct = Math.round((circData?.score ?? 0) * 100);
+      const isCirc = Boolean(circData?.is_circulation);
+      const color = isCirc ? "#27ae60" : "#e74c3c";
+      const verdictClass = isCirc ? "yes" : "no";
+      const verdictText = isCirc
         ? "✅ Accident de circulation détecté"
         : "❌ Pas un accident de circulation";
+
+      const speedDescriptions = {
+        "120": "Autoroute (~120 km/h)",
+        "80": "Route cantonale (~80 km/h)",
+        "50": "Agglomération / Ville (~50 km/h)",
+        "30": "Zone 30 / Urbain (~30 km/h)",
+      };
+
+      let speedHtml = "";
+      if (maxSpeed) {
+        const speedDesc = speedDescriptions[maxSpeed] || `${maxSpeed} km/h`;
+        speedHtml = `
+          <div class="speed-case">
+            <div class="speed-sign">${escapeHtml(String(maxSpeed))}</div>
+            <div class="speed-info">
+              <div class="speed-label">Vitesse maximale autorisée (estimée)</div>
+              <div class="speed-val">${escapeHtml(speedDesc)}</div>
+            </div>
+          </div>
+        `;
+      }
+
       return `
         <div class="score-bar-container">
           <div class="score-bar-bg">
@@ -431,6 +501,7 @@
           <span class="score-label" style="color:${color}">${pct}%</span>
         </div>
         <div class="classification-verdict ${verdictClass}">${verdictText}</div>
+        ${speedHtml}
       `;
     }
 

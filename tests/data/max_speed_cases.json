@@ -1,0 +1,23 @@
+[
+    {
+        "text": "Accident sur les trappistes venez vite",
+        "expected": "80"
+    },
+    {
+        "text": "Accident sur l'autoroute vers la sortie de Sion, plusieurs véhicules impliqués.",
+        "expected": "120"
+    },
+    {
+        "text": "Il y a un gros bouchon sur l'autoroute après un accident.",
+        "expected": "120"
+    },
+    {
+        "text": "Un motard vient de faire un accident sur la route cantonale, il est blessé.",
+        "expected": "80"
+    },
+    {
+        "text": "Accident sur la route du col du Simplon, un véhicule a fait une sortie de route.",
+        "expected": "80"
+    }
+
+]

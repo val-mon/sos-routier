@@ -53,7 +53,7 @@ def run_pipeline(filename: str, audio_dir: str = "res/") -> Generator[dict, None
     yield {"step": "classification", "status": "running", "data": None}
     t0 = perf_counter()
     try:
-        score = system_one.is_circulation(transcript)
+        score, max_speed = system_one.analyse(transcript)
     except Exception as e:
         yield {
             "step": "classification",
@@ -66,7 +66,13 @@ def run_pipeline(filename: str, audio_dir: str = "res/") -> Generator[dict, None
     yield {
         "step": "classification",
         "status": "done",
-        "data": {"score": round(score, 4), "is_circulation": is_circ},
+        "data": [
+            {
+                "score": round(score, 4),
+                "is_circulation": is_circ,
+            },
+            max_speed,
+        ],
         "duration": round(perf_counter() - t0, 2),
     }
 
@@ -177,12 +183,17 @@ if __name__ == "__main__":
                     print(duration, "Texte transcrit:\n\t", data["text"])
             case "classification":
                 if done:
+                    data_is_circ = data[0]
+                    data_max_speed = data[1]
                     print(
                         duration,
-                        "Classification de Jev:\n\tScore = ",
-                        data["score"],
+                        "Classification de Jev:\n\tScore =",
+                        data_is_circ["score"],
                         "=> is_circulation = ",
-                        data["is_circulation"],
+                        data_is_circ["is_circulation"],
+                        "\n\tPredicted max speed =",
+                        data_max_speed,
+                        "km/h",
                     )
             case "llm_extraction":
                 if done:
