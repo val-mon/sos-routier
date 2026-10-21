@@ -42,6 +42,36 @@ uv run main.py
 ```
 Follow the prompts to select a file and see the results in the terminal.
 
+## Project Structure
+
+```text
+sos-routier/
+├── data/
+│   └── accidents.shz       # Datased used for training (Accidents de la circulation routière - Etat de Fribourg)
+├── models/                 # Machine learning models, training notebooks & evaluation
+│   ├── data/               # Benchmark datasets and evaluation plots
+│   ├── jev.py              # System-One Jev evaluation scripts
+│   ├── mlp.ipynb           # Multi-Layer Perceptron experimentation
+│   ├── model_utils.py      # ML training and evaluation helpers
+│   ├── preprocess.py       # Data cleaning and feature engineering
+│   ├── rf.ipynb            # Random Forest experimentation
+│   └── xgb.ipynb           # XGBoost experimentation
+├── modules/                # Core pipeline processing modules
+│   ├── api_calls.py        # External API integrations (Open-Meteo weather data)
+│   ├── audio_to_text.py    # Speech-to-text & speaker diarization (MOSS)
+│   ├── call_llm.py         # Information extraction & web search tools (Ollama)
+│   ├── llm_tool_utils.py   # Utils for LLM tool management
+│   └── system_one.py       # Incident classification (Typesafe AI Jev)
+├── res/                    # Input audio recordings
+├── static/                 # Web interface frontend (HTML / CSS / JS)
+├── tests/                  # Test suites and test fixtures
+│   ├── data/               # Test datasets and sample scenarios
+│   └── test_system_one.py  # Tests for System-One classification
+├── main.py                 # CLI entry point & pipeline runner
+├── server.py               # FastAPI server with SSE streaming for the web UI
+└── pyproject.toml          # Project configuration and dependencies (uv)
+```
+
 ## Pipeline
 
 ```
@@ -73,7 +103,7 @@ The output of the `extract_structured_data_llm()` function is a JSON in `str` da
 For this to work, you'll need to add your Ollama API key in `.env`. Check formatting in the [.env.example](./.env.example) file.
 
 ### API calls
-- **Open-Meteo** (`get_weather_data_by_city` in `api_calls.py`) — gets current weather for the extracted city and converts it into features for the prediction model: `METEO`, `ETAT ROUTE`, `LUMIERE`.
+- **Open-Meteo** (`get_weather_data_by_city` in `api_calls.py`) — gets current weather for the extracted city and converts it into features for the prediction model: `METEO`, `ETAT ROUTE`.
 - **Ollama web tools** (`web_search`, `web_fetch` in `call_llm.py`) — used by the LLM during the research phase to look up addresses of landmarks mentioned by the caller.
 
 ## Team

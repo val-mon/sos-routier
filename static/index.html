@@ -309,7 +309,7 @@
 
     .weather-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(2, 1fr);
       gap: 0.75rem;
     }
     .weather-item {
@@ -544,12 +544,6 @@
         "route enneigée": "❄️",
         autre: "❓",
       };
-      const lumiereIcons = {
-        jour: "🌞",
-        nuit: "🌙",
-        "aurore / crépuscule": "🌅",
-        inconnu: "❓",
-      };
       return `
         <div class="weather-grid">
           <div class="weather-item">
@@ -561,11 +555,6 @@
             <div class="weather-icon">${routeIcons[data["ETAT ROUTE"]] || "❓"}</div>
             <div class="weather-label">État route</div>
             <div class="weather-value">${escapeHtml(data["ETAT ROUTE"])}</div>
-          </div>
-          <div class="weather-item">
-            <div class="weather-icon">${lumiereIcons[data.LUMIERE] || "❓"}</div>
-            <div class="weather-label">Lumière</div>
-            <div class="weather-value">${escapeHtml(data.LUMIERE)}</div>
           </div>
         </div>
       `;

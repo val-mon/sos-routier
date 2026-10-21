@@ -77,72 +77,10 @@ def get_weather_data_by_city(city: str) -> dict:
         )
     )
 
-    # - LUMIERE: ['aurore / crépuscule', 'jour', 'nuit', 'inconnu']
-    lumiere = (
-        "aurore / crépuscule"
-        if time_hour > 6 and time_hour < 7
-        else (
-            "jour"
-            if time_hour < 19
-            else "aurore / crépuscule" if time_hour < 20 else "nuit"
-        )
-    )
-
     return {
         "METEO": meteo,
         "ETAT ROUTE": etat_route,
-        "LUMIERE": lumiere,
     }
 
 
 # print(get_weather_by_city("Anaktuvuk Pass, Alaska"))
-
-
-OVERPASS_HEADERS = {
-    "User-Agent": "sosroutier/1.0",
-    "Accept": "application/json",
-}
-
-
-def get_road_max_speed(rue, ville):
-    """
-    Overpass API query to get the maximum speed of a road in a given city.
-    -> may not be used because of slow response time
-    Returns a dictionary with the road's id, type, maxspeed, forward and backward maxspeed, and center coordinates.
-    If no results are found, returns an empty list.
-    """
-    # https://bboxfinder.com/#45.740693,5.861206,47.931066,10.634766
-    query = f"""
-[out:json][timeout:25][bbox:45.740693,5.861206,47.931066,10.634766];
-area["name"="{ville}"]["boundary"="administrative"]["admin_level"="8"]->.ville;
-way["highway"]["name"~"{rue}",i](area.ville);
-out tags center;
-    """
-    r = requests.post(
-        "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
-        data={"data": query},
-        headers=OVERPASS_HEADERS,
-    )
-    r.raise_for_status()
-
-    resultats = []
-    for el in r.json()["elements"]:
-        t = el["tags"]
-        print(
-            f"Route: {t.get('name')}, Type: {t.get('highway')}, Maxspeed: {t.get('maxspeed')}"
-        )
-        print(t)
-        resultats.append(
-            {
-                "id": el["id"],
-                "type_route": t.get("highway"),
-                "maxspeed": t.get("maxspeed"),
-                "forward": t.get("maxspeed:forward"),
-                "backward": t.get("maxspeed:backward"),
-                "centre": el.get("center"),
-            }
-        )
-    return [] if len(resultats) == 0 else resultats[0]
-
-
-# print(get_road_max_speed("rue de Lausanne", "Sion"))
