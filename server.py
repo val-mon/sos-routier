@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from pipeline import list_audio_files, run_pipeline
+from main import list_audio_files, run_pipeline
 
 app = FastAPI(title="SOS Routier")
 
