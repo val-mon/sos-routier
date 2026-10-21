@@ -77,7 +77,9 @@ For this to work, you'll need to add your Ollama API key in `.env`. Check format
 - **Ollama web tools** (`web_search`, `web_fetch` in `call_llm.py`) — used by the LLM during the research phase to look up addresses of landmarks mentioned by the caller.
 
 ## Team
-#TODO
+- Valentin Monod - https://github.com/val-mon
+- Gaëtan Veuillet - https://github.com/Dyumes
+- Gonçalo Arieira Esteves - https://github.com/g-ae
 
 ---
 *Parts of this README were drafted with the help of an AI assistant.*
