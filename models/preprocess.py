@@ -4,9 +4,9 @@ import pandas as pd
 from sklearn.preprocessing import OneHotEncoder
 
 
-def get_data(drop_hour=True):
+def get_data(file="../data/accidents.shz", drop_hour=True):
     # load data
-    df = gpd.read_file("../data/accidents.shz")
+    df = gpd.read_file(file)
 
     # select features and target columns
     FEATURES_COLS = [

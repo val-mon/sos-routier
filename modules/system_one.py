@@ -1,5 +1,6 @@
 # src: https://docs.typesafe.ai/introduction/quickstart
 
+from transformers import AutoProcessor, AutoModelForCausalLM
 import os
 
 from dotenv import load_dotenv
@@ -47,4 +48,26 @@ def analyse(txt: str):
     return (
         response.nouls["is_circulation"].noul,
         response.choices["road_max_speed"].choice,
+    )
+
+
+def predict_accident_gravity(txt: str) -> float:
+    response = client.system_one(
+        state=txt,
+        questions={
+            "accident_gravity": Noul(instructions="""
+                <task>
+                Classify the gravity of the accident mentioned in the provided emergency text, on a scale from 0 to 1, where 0 means "no injuries" and 1 means "very serious accident (deaths)".
+                </task>
+                """ + CONTEXT),
+        },
+    )
+    return response.nouls["accident_gravity"].noul
+
+
+def predict_accident_gravity_with_features(
+    HEURE: int, METEO: str, ETAT_ROUTE: str, VITESSE_MAX: int
+) -> float:
+    return predict_accident_gravity(
+        txt=f"Il y a eu un accident de la circulation sur la route. Il est {HEURE}h, il fait {METEO}, la route est {ETAT_ROUTE}, sur une route à {VITESSE_MAX} km/h."
     )
