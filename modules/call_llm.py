@@ -9,7 +9,10 @@ import json
 
 load_dotenv()  # Load environment variables from .env file
 
-client = Client(headers={"Authorization": f"Bearer {os.getenv('OLLAMA_API_KEY')}"})
+client = Client(
+    host="https://ollama.com",
+    headers={"Authorization": f"Bearer {os.getenv('OLLAMA_API_KEY')}"},
+)
 
 MODEL = "gpt-oss:120b-cloud"
 MAX_TOOL_ROUNDS = 6
