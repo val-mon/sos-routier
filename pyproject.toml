@@ -1,0 +1,30 @@
+[project]
+name = "sos-routier"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "accelerate>=1.15.0",
+    "audioop-lts>=0.2.2",
+    "librosa>=1.0.0",
+    "pydub>=0.25.1",
+    "torch>=2.14.1",
+    "dotenv>=0.9.9",
+    "ollama>=0.6.3",
+    "pydantic>=2.14.1",
+    "transformers>=5.20.2",
+    "typesafe-sdk>=0.7.5",
+    "scikit-learn>=1.9.1",
+    "geopandas>=1.2.0",
+    "pandas>=3.0.6",
+    "seaborn>=0.13.2",
+    "matplotlib>=3.11.2",
+    "pyarrow>=26.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
