@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SOS Routier</title>
+  <style>
+    /* ── Reset & base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #0f1117;
+      color: #e4e6eb;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Header ── */
+    header {
+      width: 100%;
+      background: linear-gradient(135deg, #1a1d27 0%, #22252f 100%);
+      border-bottom: 2px solid #c0392b;
+      padding: 1.2rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    header .logo { font-size: 1.8rem; }
+    header h1 {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #fff;
+    }
+    header h1 span { color: #e74c3c; }
+
+    /* ── Main container ── */
+    main {
+      width: 100%;
+      max-width: 720px;
+      padding: 1.5rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+
+    /* ── Controls ── */
+    .controls {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+    }
+    .controls select {
+      flex: 1;
+      padding: 0.65rem 1rem;
+      border-radius: 8px;
+      border: 1px solid #333;
+      background: #1a1d27;
+      color: #e4e6eb;
+      font-size: 0.95rem;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23999'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+    }
+    .controls select:focus { outline: none; border-color: #e74c3c; }
+    .controls button {
+      padding: 0.65rem 1.5rem;
+      border-radius: 8px;
+      border: none;
+      background: #c0392b;
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+    .controls button:hover { background: #e74c3c; }
+    .controls button:disabled {
+      background: #444;
+      cursor: not-allowed;
+    }
+
+    /* ── Step cards ── */
+    .step-card {
+      background: #1a1d27;
+      border: 1px solid #2a2d37;
+      border-radius: 12px;
+      overflow: hidden;
+      transition: border-color 0.3s, opacity 0.3s;
+      opacity: 0.4;
+    }
+    .step-card.active { opacity: 1; border-color: #e67e22; }
+    .step-card.done { opacity: 1; border-color: #27ae60; }
+    .step-card.error { opacity: 1; border-color: #e74c3c; }
+    .step-card.skipped { opacity: 0.6; border-color: #555; }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.8rem 1rem;
+      background: #22252f;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .step-header .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: #333;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #999;
+      flex-shrink: 0;
+    }
+    .step-card.done .step-num { background: #27ae60; color: #fff; }
+    .step-card.active .step-num { background: #e67e22; color: #fff; }
+    .step-card.error .step-num { background: #e74c3c; color: #fff; }
+
+    .step-header .step-title { flex: 1; }
+    .step-header .step-status {
+      font-size: 0.8rem;
+      font-weight: 400;
+      color: #999;
+    }
+    .step-card.active .step-status { color: #e67e22; }
+    .step-card.done .step-status { color: #27ae60; }
+    .step-card.error .step-status { color: #e74c3c; }
+    .step-card.skipped .step-status { color: #888; }
+
+    .step-header .step-duration {
+      font-size: 0.75rem;
+      color: #666;
+      font-weight: 400;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .step-body {
+      padding: 0;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.4s ease, padding 0.4s ease;
+    }
+    .step-card.active .step-body,
+    .step-card.done .step-body,
+    .step-card.error .step-body,
+    .step-card.skipped .step-body {
+      padding: 1rem;
+      max-height: 600px;
+    }
+
+    .step-body .placeholder {
+      color: #666;
+      font-style: italic;
+      font-size: 0.9rem;
+    }
+
+    /* Spinner animation */
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #555;
+      border-top-color: #e67e22;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+
+    /* ── Data displays ── */
+    .transcript-text {
+      background: #0f1117;
+      padding: 0.8rem 1rem;
+      border-radius: 8px;
+      border-left: 3px solid #3498db;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      color: #ccc;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .score-bar-container {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    .score-bar-bg {
+      flex: 1;
+      height: 22px;
+      background: #2a2d37;
+      border-radius: 11px;
+      overflow: hidden;
+    }
+    .score-bar-fill {
+      height: 100%;
+      border-radius: 11px;
+      transition: width 0.6s ease;
+    }
+    .score-label {
+      font-size: 1.1rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      min-width: 52px;
+      text-align: right;
+    }
+    .classification-verdict {
+      margin-top: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .classification-verdict.yes {
+      background: rgba(39, 174, 96, 0.15);
+      color: #27ae60;
+      border: 1px solid rgba(39, 174, 96, 0.3);
+    }
+    .classification-verdict.no {
+      background: rgba(231, 76, 60, 0.15);
+      color: #e74c3c;
+      border: 1px solid rgba(231, 76, 60, 0.3);
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .data-table tr { border-bottom: 1px solid #2a2d37; }
+    .data-table tr:last-child { border-bottom: none; }
+    .data-table td {
+      padding: 0.5rem 0.6rem;
+      font-size: 0.9rem;
+    }
+    .data-table td:first-child {
+      color: #888;
+      font-weight: 500;
+      white-space: nowrap;
+      width: 140px;
+    }
+    .data-table td:last-child { color: #e4e6eb; }
+
+    .inferred-warning {
+      margin-top: 0.6rem;
+      padding: 0.5rem 0.75rem;
+      background: rgba(230, 126, 34, 0.12);
+      border: 1px solid rgba(230, 126, 34, 0.3);
+      border-radius: 6px;
+      color: #e67e22;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .weather-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+    }
+    .weather-item {
+      background: #0f1117;
+      border-radius: 8px;
+      padding: 0.8rem;
+      text-align: center;
+    }
+    .weather-item .weather-icon { font-size: 1.5rem; margin-bottom: 0.3rem; }
+    .weather-item .weather-label {
+      font-size: 0.7rem;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.2rem;
+    }
+    .weather-item .weather-value {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #e4e6eb;
+    }
+
+    .error-msg {
+      background: rgba(231, 76, 60, 0.1);
+      border: 1px solid rgba(231, 76, 60, 0.3);
+      border-radius: 8px;
+      padding: 0.7rem 1rem;
+      color: #e74c3c;
+      font-size: 0.9rem;
+    }
+
+    .skipped-msg {
+      color: #888;
+      font-style: italic;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="logo">🚨</span>
+    <h1><span>SOS</span> Routier — Analyse d'appel d'urgence</h1>
+  </header>
+
+  <main>
+    <!-- Controls -->
+    <div class="controls">
+      <select id="file-select">
+        <option value="">Chargement...</option>
+      </select>
+      <button id="run-btn" disabled>▶ Lancer</button>
+    </div>
+
+    <!-- Step 1: Transcription -->
+    <div class="step-card" id="card-transcription">
+      <div class="step-header">
+        <span class="step-num">1</span>
+        <span class="step-title">Transcription audio</span>
+        <span class="step-status" id="status-transcription"></span>
+        <span class="step-duration" id="duration-transcription"></span>
+      </div>
+      <div class="step-body" id="body-transcription">
+        <span class="placeholder">En attente du lancement...</span>
+      </div>
+    </div>
+
+    <!-- Step 2: Classification -->
+    <div class="step-card" id="card-classification">
+      <div class="step-header">
+        <span class="step-num">2</span>
+        <span class="step-title">Classification Jev</span>
+        <span class="step-status" id="status-classification"></span>
+        <span class="step-duration" id="duration-classification"></span>
+      </div>
+      <div class="step-body" id="body-classification">
+        <span class="placeholder">En attente...</span>
+      </div>
+    </div>
+
+    <!-- Step 3: LLM Extraction -->
+    <div class="step-card" id="card-llm_extraction">
+      <div class="step-header">
+        <span class="step-num">3</span>
+        <span class="step-title">Extraction LLM</span>
+        <span class="step-status" id="status-llm_extraction"></span>
+        <span class="step-duration" id="duration-llm_extraction"></span>
+      </div>
+      <div class="step-body" id="body-llm_extraction">
+        <span class="placeholder">En attente...</span>
+      </div>
+    </div>
+
+    <!-- Step 4: Weather -->
+    <div class="step-card" id="card-weather">
+      <div class="step-header">
+        <span class="step-num">4</span>
+        <span class="step-title">Conditions routières estimées</span>
+        <span class="step-status" id="status-weather"></span>
+        <span class="step-duration" id="duration-weather"></span>
+      </div>
+      <div class="step-body" id="body-weather">
+        <span class="placeholder">En attente...</span>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const fileSelect = document.getElementById("file-select");
+    const runBtn = document.getElementById("run-btn");
+
+    // ── Load file list ──
+    async function loadFiles() {
+      try {
+        const res = await fetch("/api/files");
+        const data = await res.json();
+        fileSelect.innerHTML = "";
+        if (data.files.length === 0) {
+          fileSelect.innerHTML = '<option value="">Aucun fichier .wav trouvé</option>';
+          return;
+        }
+        data.files.forEach((f) => {
+          const opt = document.createElement("option");
+          opt.value = f;
+          opt.textContent = f;
+          fileSelect.appendChild(opt);
+        });
+        runBtn.disabled = false;
+      } catch (err) {
+        fileSelect.innerHTML = '<option value="">Erreur de chargement</option>';
+      }
+    }
+
+    // ── Reset all cards ──
+    function resetCards() {
+      const steps = ["transcription", "classification", "llm_extraction", "weather"];
+      steps.forEach((step) => {
+        const card = document.getElementById(`card-${step}`);
+        card.className = "step-card";
+        document.getElementById(`status-${step}`).innerHTML = "";
+        document.getElementById(`duration-${step}`).textContent = "";
+        document.getElementById(`body-${step}`).innerHTML =
+          '<span class="placeholder">En attente...</span>';
+      });
+    }
+
+    // ── Render step data ──
+    function renderTranscription(data) {
+      return `<div class="transcript-text">${escapeHtml(data.text)}</div>`;
+    }
+
+    function renderClassification(data) {
+      const pct = Math.round(data.score * 100);
+      const color = data.is_circulation ? "#27ae60" : "#e74c3c";
+      const verdictClass = data.is_circulation ? "yes" : "no";
+      const verdictText = data.is_circulation
+        ? "✅ Accident de circulation détecté"
+        : "❌ Pas un accident de circulation";
+      return `
+        <div class="score-bar-container">
+          <div class="score-bar-bg">
+            <div class="score-bar-fill" style="width:${pct}%;background:${color}"></div>
+          </div>
+          <span class="score-label" style="color:${color}">${pct}%</span>
+        </div>
+        <div class="classification-verdict ${verdictClass}">${verdictText}</div>
+      `;
+    }
+
+    function renderLlmExtraction(data) {
+      const fields = [
+        ["Ville", data.city],
+        ["Code postal", data.postal_code],
+        ["Type de voie", data.road_type],
+        ["Rue", data.road],
+        ["Numéro", data.road_number],
+        ["Repère", data.landmark],
+      ];
+      let html = '<table class="data-table">';
+      fields.forEach(([label, val]) => {
+        html += `<tr><td>${label}</td><td>${val ? escapeHtml(String(val)) : '<span style="color:#555">—</span>'}</td></tr>`;
+      });
+      html += "</table>";
+      if (data.inferred) {
+        html +=
+          '<div class="inferred-warning">⚠️ Adresse inférée par le LLM — à confirmer avec l\'appelant</div>';
+      }
+      return html;
+    }
+
+    function renderWeather(data) {
+      const meteoIcons = {
+        beau: "☀️",
+        couvert: "☁️",
+        pluie: "🌧️",
+        "pluie givrante": "🌨️",
+        "chute de neige": "❄️",
+        grêle: "🌨️",
+        autre: "🌫️",
+      };
+      const routeIcons = {
+        "sèche": "🛣️",
+        humide: "💧",
+        "mouillée": "💧",
+        "verglacée": "🧊",
+        "route enneigée": "❄️",
+        autre: "❓",
+      };
+      const lumiereIcons = {
+        jour: "🌞",
+        nuit: "🌙",
+        "aurore / crépuscule": "🌅",
+        inconnu: "❓",
+      };
+      return `
+        <div class="weather-grid">
+          <div class="weather-item">
+            <div class="weather-icon">${meteoIcons[data.METEO] || "🌫️"}</div>
+            <div class="weather-label">Météo</div>
+            <div class="weather-value">${escapeHtml(data.METEO)}</div>
+          </div>
+          <div class="weather-item">
+            <div class="weather-icon">${routeIcons[data["ETAT ROUTE"]] || "❓"}</div>
+            <div class="weather-label">État route</div>
+            <div class="weather-value">${escapeHtml(data["ETAT ROUTE"])}</div>
+          </div>
+          <div class="weather-item">
+            <div class="weather-icon">${lumiereIcons[data.LUMIERE] || "❓"}</div>
+            <div class="weather-label">Lumière</div>
+            <div class="weather-value">${escapeHtml(data.LUMIERE)}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    const renderers = {
+      transcription: renderTranscription,
+      classification: renderClassification,
+      llm_extraction: renderLlmExtraction,
+      weather: renderWeather,
+    };
+
+    const statusLabels = {
+      running: '<span class="spinner"></span> En cours…',
+      done: "✅ Terminé",
+      error: "❌ Erreur",
+      skipped: "⏭️ Ignoré",
+    };
+
+    // ── Handle an SSE event ──
+    function handleEvent(event) {
+      if (event.step === "done") {
+        runBtn.disabled = false;
+        return;
+      }
+
+      const card = document.getElementById(`card-${event.step}`);
+      const statusEl = document.getElementById(`status-${event.step}`);
+      const durationEl = document.getElementById(`duration-${event.step}`);
+      const bodyEl = document.getElementById(`body-${event.step}`);
+
+      if (!card) return;
+
+      // Set card class
+      const classMap = { running: "active", done: "done", error: "error", skipped: "skipped" };
+      card.className = `step-card ${classMap[event.status] || ""}`;
+
+      // Set status label
+      statusEl.innerHTML = statusLabels[event.status] || "";
+
+      // Set duration
+      if (event.duration !== undefined && event.duration !== null) {
+        durationEl.textContent = `${event.duration}s`;
+      }
+
+      // Set body content
+      if (event.status === "running") {
+        bodyEl.innerHTML = '<span class="placeholder">Traitement en cours...</span>';
+      } else if (event.status === "error") {
+        bodyEl.innerHTML = `<div class="error-msg">❌ ${escapeHtml(event.data?.error || "Erreur inconnue")}</div>`;
+      } else if (event.status === "skipped") {
+        bodyEl.innerHTML = `<div class="skipped-msg">⏭️ ${escapeHtml(event.data?.reason || "Étape ignorée")}</div>`;
+      } else if (event.status === "done" && event.data) {
+        const renderer = renderers[event.step];
+        if (renderer) {
+          bodyEl.innerHTML = renderer(event.data);
+        } else {
+          bodyEl.innerHTML = `<pre>${escapeHtml(JSON.stringify(event.data, null, 2))}</pre>`;
+        }
+      }
+    }
+
+    // ── Run pipeline ──
+    function runPipeline() {
+      const filename = fileSelect.value;
+      if (!filename) return;
+
+      resetCards();
+      runBtn.disabled = true;
+
+      const evtSource = new EventSource(`/api/run/${encodeURIComponent(filename)}`);
+
+      evtSource.onmessage = (e) => {
+        try {
+          const event = JSON.parse(e.data);
+          handleEvent(event);
+          if (event.step === "done") {
+            evtSource.close();
+          }
+        } catch (err) {
+          console.error("Parse error:", err, e.data);
+        }
+      };
+
+      evtSource.onerror = () => {
+        evtSource.close();
+        runBtn.disabled = false;
+      };
+    }
+
+    // ── Util ──
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ── Init ──
+    runBtn.addEventListener("click", runPipeline);
+    loadFiles();
+  </script>
+</body>
+</html>
