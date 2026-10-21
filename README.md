@@ -9,7 +9,7 @@ It takes in the caller's unstructured description, road conditions and other con
 ## Getting started
 
 ### Prerequisites
-- Python 3
+- Python 3.13+
 - uv (https://docs.astral.sh/uv/)
 - Ollama account and API key (https://ollama.com/settings/keys)
 - Typesafe AI account with credits (less than a cent will be used) (https://console.typesafe.ai/home)
@@ -27,19 +27,33 @@ Create a `.env` file at the project root (see [.env.example](./.env.example) for
 You'll need an Ollama API key (only free models are used) and a Typesafe AI API key (For System-One Jev)
 
 ### Usage
-The whole pipeline is available at `main.py`.
-- Install dependencies with `uv`:
+
+Add audio files (`.wav` or other formats) to the `res/` directory.
+
+#### Web interface (recommended)
 ```bash
-uv sync
+uv run server.py
 ```
-- Add audio files to `res/`
-- Launch pipeline:
+Open http://localhost:8000 in your browser. Select an audio file and click **▶ Lancer** to run the full pipeline with real-time results.
+
+#### CLI
 ```bash
 uv run main.py
 ```
+Follow the prompts to select a file and see the results in the terminal.
 
 ## Pipeline
-#TODO
+
+```
+Audio (.wav) ──► Transcription ──► Classification ──► Extraction LLM ──► Conditions routières
+                  (MOSS)            (Jev)              (Ollama)           (Open-Meteo)
+```
+
+### Audio to text
+Transcription of audio files using the [MOSS-Transcribe-Diarize](https://huggingface.co/OpenMOSS-Team/MOSS-Transcribe-Diarize) model from HuggingFace. Supports speaker diarization. Non-`.wav` files in `res/` are automatically converted before transcription.
+
+### System-One (Jev)
+Binary classification using [Typesafe AI](https://typesafe.ai/)'s System-One model (`jev-latest`) to determine whether the transcribed call concerns a **road traffic incident** (score ≥ 0.5). If not, the pipeline stops early.
 
 ### Call LLM
 First iteration of the call LLM file uses a free-tier LLM from [Ollama](https://ollama.com/) (currently: `gpt-oss:120b-cloud`) to take the transcript from the emergency call and extract location from it.
@@ -59,8 +73,11 @@ The output of the `extract_structured_data_llm()` function is a JSON in `str` da
 For this to work, you'll need to add your Ollama API key in `.env`. Check formatting in the [.env.example](./.env.example) file.
 
 ### API calls
-- Open-Meteo (`get_weather_data_by_city` in `api_calls.py`)
-Gets weather data in specific city and converts that data to something the prediction model can use.
+- **Open-Meteo** (`get_weather_data_by_city` in `api_calls.py`) — gets current weather for the extracted city and converts it into features for the prediction model: `METEO`, `ETAT ROUTE`, `LUMIERE`.
+- **Ollama web tools** (`web_search`, `web_fetch` in `call_llm.py`) — used by the LLM during the research phase to look up addresses of landmarks mentioned by the caller.
 
 ## Team
 #TODO
+
+---
+*Parts of this README were drafted with the help of an AI assistant.*
