@@ -223,6 +223,9 @@
       font-weight: 600;
       font-size: 0.9rem;
     }
+    .classification-verdict + .score-bar-container {
+      margin-top: 0.75rem;
+    }
     .classification-verdict.yes {
       background: rgba(39, 174, 96, 0.15);
       color: #27ae60;
@@ -346,12 +349,50 @@
       font-style: italic;
       font-size: 0.9rem;
     }
+
+    .compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+    .compare-col {
+      background: #0f1117;
+      border: 1px solid #2a2d37;
+      border-radius: 8px;
+      padding: 0.75rem;
+      min-width: 0;
+    }
+    .compare-col h4 {
+      font-size: 0.75rem;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.6rem;
+    }
+    .compare-col .classification-verdict { margin-top: 0; font-size: 0.85rem; }
+    .compare-col .score-bar-container { margin: 0.6rem 0 0; gap: 0.5rem; }
+    .compare-col .score-label { font-size: 0.95rem; min-width: 40px; }
+    @media (max-width: 520px) {
+      .compare-grid { grid-template-columns: 1fr; }
+    }
+
+    .compare-col .jev-block + .jev-block {
+      margin-top: 0.9rem;
+      padding-top: 0.9rem;
+      border-top: 1px dashed #2a2d37;
+    }
+    .compare-col h5 {
+      font-size: 0.72rem;
+      color: #aaa;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
   </style>
 </head>
 <body>
   <header>
     <span class="logo">🚨</span>
-    <h1><span>SOS</span> Routier — Analyse d'appel d'urgence</h1>
+    <h1><span>SOS</span> Routier : Analyse d'appel d'urgence</h1>
   </header>
 
   <main>
@@ -414,7 +455,36 @@
         <span class="placeholder">En attente...</span>
       </div>
     </div>
+
+    <!-- Step 5: Random Forest -->
+    <div class="step-card" id="card-prediction">
+      <div class="step-header">
+        <span class="step-num">5</span>
+        <span class="step-title">Prédiction</span>
+        <span class="step-status" id="status-prediction"></span>
+        <span class="step-duration" id="duration-prediction"></span>
+      </div>
+      <div class="step-body" id="body-prediction">
+        <span class="placeholder">En attente...</span>
+      </div>
+    </div>
+
+    <!-- Step 6: Jev -->
+    <div class="step-card" id="card-jev_prediction">
+      <div class="step-header">
+        <span class="step-num">6</span>
+        <span class="step-title">Prédiction gravité : Jev</span>
+        <span class="step-status" id="status-jev_prediction"></span>
+        <span class="step-duration" id="duration-jev_prediction"></span>
+      </div>
+      <div class="step-body" id="body-jev_prediction">
+        <span class="placeholder">En attente...</span>
+      </div>
+    </div>
   </main>
+
+
+
 
   <script>
     const fileSelect = document.getElementById("file-select");
@@ -444,7 +514,7 @@
 
     // ── Reset all cards ──
     function resetCards() {
-      const steps = ["transcription", "classification", "llm_extraction", "weather"];
+      const steps = ["transcription", "classification", "llm_extraction", "weather", "prediction", "jev_prediction"];
       steps.forEach((step) => {
         const card = document.getElementById(`card-${step}`);
         card.className = "step-card";
@@ -560,11 +630,103 @@
       `;
     }
 
+        function scoreBar(pct, color) {
+      return `
+        <div class="score-bar-container">
+          <div class="score-bar-bg">
+            <div class="score-bar-fill" style="width:${pct}%;background:${color}"></div>
+          </div>
+          <span class="score-label" style="color:${color}">${pct}%</span>
+        </div>`;
+    }
+
+    function colStatus(res) {
+      if (res?.error) return `<div class="error-msg">❌ ${escapeHtml(res.error)}</div>`;
+      if (res?.skipped) return `<div class="skipped-msg">⏭️ ${escapeHtml(res.skipped)}</div>`;
+      return null;
+    }
+
+    function renderColumn(rf) {
+      const st = colStatus(rf);
+      if (st) return st;
+
+      const yes = ["1", "1.0", "true", "oui", "yes"];
+      const hasVictims = yes.includes(String(rf.prediction).toLowerCase());
+      let pct = null;
+      if (rf.probabilities) {
+        const k = Object.keys(rf.probabilities).find((k) => yes.includes(k.toLowerCase()));
+        if (k) pct = Math.round(rf.probabilities[k] * 100);
+      }
+      const color = hasVictims ? "#e74c3c" : "#27ae60";
+      const rows = Object.entries(rf.inputs || {})
+        .map(([k, v]) => `<tr><td>${escapeHtml(k)}</td><td>${escapeHtml(String(v))}</td></tr>`)
+        .join("");
+      const warns = (rf.warnings || [])
+        .map((w) => `<div class="inferred-warning">⚠️ ${escapeHtml(w)}</div>`)
+        .join("");
+
+      return `
+        <div class="classification-verdict ${hasVictims ? "no" : "yes"}">
+          ${hasVictims ? "🚑 Victimes probables" : "✅ Pas de victime probable"}
+        </div>
+        ${pct !== null ? scoreBar(pct, color) : ""}
+        <table class="data-table" style="margin-top:0.5rem;font-size:0.85rem">${rows}</table>
+        ${warns}`;
+    }
+
+    function renderJevColumn(jev) {
+      const st = colStatus(jev);
+      if (st) return st;
+
+      const g = jev.gravity;
+      const pct = Math.round(g * 100);
+      let label, cls, color;
+      if (g < 0.25)      { label = "✅ Pas / peu de blessés"; cls = "yes"; color = "#27ae60"; }
+      else if (g < 0.5)  { label = "🩹 Blessés légers probables"; cls = "yes"; color = "#f1c40f"; }
+      else if (g < 0.75) { label = "🚑 Blessés graves probables"; cls = "no"; color = "#e67e22"; }
+      else               { label = "☠️ Accident très grave"; cls = "no"; color = "#e74c3c"; }
+
+      const rows = jev.inputs
+        ? `<table class="data-table" style="margin-top:0.5rem;font-size:0.85rem">${
+            Object.entries(jev.inputs)
+              .map(([k, v]) => `<tr><td>${escapeHtml(k)}</td><td>${escapeHtml(String(v))}</td></tr>`)
+              .join("")
+          }</table>`
+        : "";
+
+      return `
+        <div class="classification-verdict ${cls}">${label}</div>
+        ${scoreBar(pct, color)}
+        ${rows}`
+    }
+
+    function renderPrediction(data) {
+      return renderColumn(data.rf ?? data);
+
+    }
+
+    function renderJevPrediction(data) {
+      // Carte 6 : les deux prédictions Jev côte à côte
+      return `
+        <div class="compare-grid">
+          <div class="compare-col">
+            <h4>📝 Texte complet</h4>
+            ${renderJevColumn(data.jev)}
+          </div>
+          <div class="compare-col">
+            <h4>📊 Features</h4>
+            ${renderJevColumn(data.jev_features)}
+          </div>
+        </div>`;
+    }
+
     const renderers = {
       transcription: renderTranscription,
       classification: renderClassification,
       llm_extraction: renderLlmExtraction,
       weather: renderWeather,
+      prediction: renderPrediction,
+      jev_prediction: renderJevPrediction,
     };
 
     const statusLabels = {

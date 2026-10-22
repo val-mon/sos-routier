@@ -4,12 +4,15 @@ import json
 from pathlib import Path
 from time import perf_counter
 from typing import Generator
+from datetime import datetime
 
 import modules.audio_to_text as audio_to_text
 import modules.system_one as system_one
 import modules.call_llm as call_llm
 import modules.api_calls as api_calls
+import modules.model as model
 
+from concurrent.futures import ThreadPoolExecutor
 
 def list_audio_files(audio_dir: str = "res/") -> list[str]:
     """Retourne la liste des fichiers .wav disponibles."""
@@ -87,6 +90,10 @@ def run_pipeline(filename: str, audio_dir: str = "res/") -> Generator[dict, None
             "status": "skipped",
             "data": {"reason": "Pipeline arrêté après classification"},
         }
+        yield {"step": "prediction", "status": "skipped",
+               "data": {"reason": "Pipeline arrêté après classification"}}
+        yield {"step": "jev_prediction", "status": "skipped",
+               "data": {"reason": "Pipeline arrêté après classification"}}
         return
 
     # ── Étape 3 : Extraction LLM ──
@@ -119,6 +126,7 @@ def run_pipeline(filename: str, audio_dir: str = "res/") -> Generator[dict, None
     }
 
     # ── Étape 4 : Météo & conditions routières ──
+    weather = None
     city = llm_data.get("city")
     if not city:
         yield {
@@ -126,26 +134,100 @@ def run_pipeline(filename: str, audio_dir: str = "res/") -> Generator[dict, None
             "status": "skipped",
             "data": {"reason": "Pas de ville trouvée par le LLM"},
         }
-        return
+    else:
+        yield {"step": "weather", "status": "running", "data": None}
+        t0 = perf_counter()
+        try:
+            weather = api_calls.get_weather_data_by_city(city)
+            yield {
+                "step": "weather",
+                "status": "done",
+                "data": weather,
+                "duration": round(perf_counter() - t0, 2),
+            }
+        except Exception as e:
+            yield {
+                "step": "weather",
+                "status": "error",
+                "data": {"error": str(e)},
+                "duration": round(perf_counter() - t0, 2),
+            }
 
-    yield {"step": "weather", "status": "running", "data": None}
-    t0 = perf_counter()
-    try:
-        weather = api_calls.get_weather_data_by_city(city)
-    except Exception as e:
+    # ── Étapes 5 & 6 : Prédictions (RF + Jev en parallèle) ──
+    missing_reason = None
+    if weather is None:
+        missing_reason = "Météo / état de la route indisponibles"
+    elif not max_speed:
+        missing_reason = "Vitesse max non estimée"
+
+    def run_jev_text():
+        try:
+            return {"gravity": round(float(system_one.predict_accident_gravity(transcript)), 4)}
+        except Exception as e:
+            return {"error": str(e)}
+
+    def run_jev_features():
+        if missing_reason:
+            return {"skipped": missing_reason}
+        try:
+            feats = {
+                "HEURE": datetime.now().hour,
+                "METEO": weather["METEO"],
+                "ETAT_ROUTE": weather["ETAT ROUTE"],
+                "VITESSE_MAX": int(max_speed),
+            }
+            g = system_one.predict_accident_gravity_with_features(**feats)
+            return {"gravity": round(float(g), 4), "inputs": feats}
+        except Exception as e:
+            return {"error": str(e)}
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        # Jev démarre tout de suite en arrière-plan
+        t_jev = perf_counter()
+        f_text = pool.submit(run_jev_text)
+        f_feat = pool.submit(run_jev_features)
+        yield {"step": "jev_prediction", "status": "running", "data": None}
+
+        # ── Étape 5 : Random Forest ──
+        if missing_reason:
+            yield {"step": "prediction", "status": "skipped", "data": {"reason": missing_reason}}
+        else:
+            yield {"step": "prediction", "status": "running", "data": None}
+            t0 = perf_counter()
+            try:
+                rf_result = model.predict(max_speed, weather)
+                yield {
+                    "step": "prediction",
+                    "status": "done",
+                    "data": rf_result,
+                    "duration": round(perf_counter() - t0, 2),
+                }
+            except Exception as e:
+                yield {
+                    "step": "prediction",
+                    "status": "error",
+                    "data": {"error": str(e)},
+                    "duration": round(perf_counter() - t0, 2),
+                }
+
+    # ── Étape 6 : Jev ──
+        jev_res = {"jev": f_text.result(), "jev_features": f_feat.result()}
+
+    if all(("error" in r or "skipped" in r) for r in jev_res.values()):
+        msg = " | ".join(f"{k} : {r.get('error') or r.get('skipped')}" for k, r in jev_res.items())
         yield {
-            "step": "weather",
+            "step": "jev_prediction",
             "status": "error",
-            "data": {"error": str(e)},
-            "duration": round(perf_counter() - t0, 2),
+            "data": {"error": msg},
+            "duration": round(perf_counter() - t_jev, 2),
         }
-        return
-    yield {
-        "step": "weather",
-        "status": "done",
-        "data": weather,
-        "duration": round(perf_counter() - t0, 2),
-    }
+    else:
+        yield {
+            "step": "jev_prediction",
+            "status": "done",
+            "data": jev_res,
+            "duration": round(perf_counter() - t_jev, 2),
+        }
 
 
 def choix_fichier(audio_dir) -> str:
@@ -208,3 +290,9 @@ if __name__ == "__main__":
             case "weather":
                 if done:
                     print(duration, "Données météo et état de la route:\n\t", data)
+            case "prediction":
+                if done:
+                    print(duration, "Prédiction Random Forest:\n\t", data)
+            case "jev_prediction":
+                if done:
+                    print(duration, "Prédictions Jev:\n\t", data)

@@ -102,7 +102,7 @@ def run_tool(call) -> str:
 
     tool_fn = AVAILABLE_TOOLS[tool_name]
     result = tool_fn(**tool_args)
-    return result
+    return result[:3000]
 
 
 def research_phase(provided_data: str) -> str:
