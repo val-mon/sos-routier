@@ -14,7 +14,7 @@ def get_data(file="../data/accidents.shz", drop_hour=True):
         "METEO",
         "ETAT_ROUTE",
         "VITESSE_MA",
-        "LUMIERE",
+        # "LUMIERE",
     ]
     TARGET_COLS = ["BLESSES_LE", "BLESSES_GR", "TUES"]
 
