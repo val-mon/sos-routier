@@ -25,6 +25,7 @@ dependencies = [
     "uvicorn>=0.34.0",
     "tabicl>=2.2.0",
     "torch>=2.14.1",
+    "shap>=0.54.1",
 ]
 
 [dependency-groups]
